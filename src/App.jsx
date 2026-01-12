@@ -4,21 +4,21 @@ import { Download, Sparkles, Wand2, Loader2, Image as ImageIcon, History, Trash2
 /**
  * SNS Icon Generator (Final App Version)
  * Features:
- * 1. AI Image Generator (via Imagen API)
+ * 1. AI Icon Generator (via Gemini 1.5 Flash - SVG Generation)
  * 2. History Management
  * 3. Enhanced UI/UX
  */
 
 // AI Styles
 const AI_STYLES = [
-  { id: 'flat', name: 'フラットデザイン', promptSuffix: 'flat vector icon, minimalist, colorful, clean lines, white background, no text' },
-  { id: 'anime', name: 'アニメ風', promptSuffix: 'anime style character icon, vibrant colors, detailed eyes, high quality, white background, no text' },
-  { id: 'pixel', name: 'ドット絵', promptSuffix: 'pixel art icon, 8-bit style, retro game aesthetic, white background, no text' },
-  { id: '3d', name: '3Dキャラクター', promptSuffix: '3D cute character render, claymorphism, soft lighting, 4k, white background, no text' },
-  { id: 'watercolor', name: '水彩画風', promptSuffix: 'watercolor painting style icon, artistic, soft edges, pastel colors, white background, no text' },
-  { id: 'logo', name: 'ロゴ風', promptSuffix: 'modern logo design, vector graphics, abstract, geometric, minimalist, white background, no text' },
-  { id: 'oil', name: '油絵風', promptSuffix: 'oil painting style, textured brushstrokes, artistic, vivid colors, white background, no text' },
-  { id: 'cyber', name: 'サイバーパンク', promptSuffix: 'cyberpunk style icon, neon lights, futuristic, high tech, dark background, glowing, no text' },
+  { id: 'flat', name: 'フラットデザイン', promptSuffix: 'flat vector icon, minimalist, colorful, clean lines, white background' },
+  { id: 'anime', name: 'アニメ風', promptSuffix: 'anime style character icon, vibrant colors, detailed eyes, high quality' },
+  { id: 'pixel', name: 'ドット絵', promptSuffix: 'pixel art icon, 8-bit style, retro game aesthetic' },
+  { id: '3d', name: '3Dキャラクター', promptSuffix: '3D cute character render, claymorphism, soft lighting' },
+  { id: 'watercolor', name: '水彩画風', promptSuffix: 'watercolor painting style icon, artistic, soft edges, pastel colors' },
+  { id: 'logo', name: 'ロゴ風', promptSuffix: 'modern logo design, vector graphics, abstract, geometric, minimalist' },
+  { id: 'oil', name: '油絵風', promptSuffix: 'oil painting style, textured brushstrokes, artistic, vivid colors' },
+  { id: 'cyber', name: 'サイバーパンク', promptSuffix: 'cyberpunk style icon, neon lights, futuristic, high tech' },
 ];
 
 export default function IconGenerator() {
@@ -38,7 +38,7 @@ export default function IconGenerator() {
     setAiError('');
 
     try {
-      // Vercel環境変数の読み込み (全角スペース除去済み)
+      // Vercel環境変数の読み込み
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       
       // APIキーが読み込めていない場合のチェック
@@ -46,21 +46,36 @@ export default function IconGenerator() {
         throw new Error('APIキーが設定されていません。Vercelの環境変数を確認してください。');
       }
 
-      const fullPrompt = `Icon of ${prompt}, ${selectedStyle.promptSuffix}, high quality, no text, no watermark`;
+      // Gemini 1.5 Flash を使用してSVGを生成するプロンプト
+      const systemPrompt = `
+        You are an expert SVG icon designer. 
+        Please generate an SVG code for an icon based on the user's request.
+        
+        Requirements:
+        - Output ONLY the raw <svg>...</svg> code. No markdown, no comments, no explanation.
+        - The SVG should have a viewBox="0 0 512 512".
+        - Use simplified shapes and vivid colors.
+        - Ensure the code is valid XML.
+        - Style: ${selectedStyle.name} (${selectedStyle.promptSuffix})
+      `;
+
+      const userPrompt = `Icon description: ${prompt}`;
       
-      // モデルを imagen-3.0-generate-001 に変更
+      // Gemini 1.5 Flash API endpoint
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            instances: [{ prompt: fullPrompt }],
-            parameters: { 
-              sampleCount: 1,
-              aspectRatio: "1:1" // 3.0ではアスペクト比指定が可能
+            contents: [{
+              role: "user",
+              parts: [{ text: systemPrompt + "\n" + userPrompt }]
+            }],
+            generationConfig: {
+              temperature: 0.7,
             }
           }),
         }
@@ -68,18 +83,31 @@ export default function IconGenerator() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("API Error:", errorData); // デバッグ用
-        throw new Error(`生成に失敗しました (${response.status})。APIキーまたはクォータを確認してください。`);
+        console.error("API Error:", errorData);
+        throw new Error(`生成に失敗しました (${response.status})。APIキーを確認してください。`);
       }
 
       const result = await response.json();
-      if (result.predictions && result.predictions[0]) {
-        const base64Image = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        throw new Error('AIからの応答が空でした。');
+      }
+
+      // SVGタグを抽出
+      const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/);
+      
+      if (svgMatch) {
+        const svgCode = svgMatch[0];
+        // SVGをBase64エンコードして画像として扱えるようにする
+        // 日本語などのマルチバイト文字に対応するために unescape(encodeURIComponent(...)) を使用
+        const base64Svg = btoa(unescape(encodeURIComponent(svgCode)));
+        const imageSrc = `data:image/svg+xml;base64,${base64Svg}`;
         
         // Add to history and set as current
         const newImageObj = {
             id: Date.now(),
-            src: base64Image,
+            src: imageSrc,
             prompt: prompt,
             style: selectedStyle.name
         };
@@ -88,8 +116,10 @@ export default function IconGenerator() {
         setHistory(prev => [newImageObj, ...prev]);
 
       } else {
-        throw new Error('画像データが取得できませんでした。');
+        console.error("Generated Text:", text);
+        throw new Error('画像データの生成に失敗しました。別のキーワードを試してみてください。');
       }
+
     } catch (err) {
       setAiError(err.message || '予期せぬエラーが発生しました');
     } finally {
@@ -101,7 +131,8 @@ export default function IconGenerator() {
     if (imageSrc) {
       const downloadLink = document.createElement("a");
       downloadLink.href = imageSrc;
-      downloadLink.download = `sns-icon-${Date.now()}.png`;
+      // SVGとしてダウンロードさせる（画質劣化なし）
+      downloadLink.download = `sns-icon-${Date.now()}.svg`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
@@ -266,7 +297,7 @@ export default function IconGenerator() {
       </div>
 
       <div className="mt-12 text-center text-gray-400 text-xs">
-        <p>Powered by Google Imagen</p>
+        <p>Powered by Google Gemini</p>
       </div>
 
       <style>{`
