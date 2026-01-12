@@ -48,8 +48,9 @@ export default function IconGenerator() {
 
       const fullPrompt = `Icon of ${prompt}, ${selectedStyle.promptSuffix}, high quality, no text, no watermark`;
       
+      // モデルを imagen-3.0-generate-001 に変更
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
@@ -58,7 +59,8 @@ export default function IconGenerator() {
           body: JSON.stringify({
             instances: [{ prompt: fullPrompt }],
             parameters: { 
-              sampleCount: 1
+              sampleCount: 1,
+              aspectRatio: "1:1" // 3.0ではアスペクト比指定が可能
             }
           }),
         }
