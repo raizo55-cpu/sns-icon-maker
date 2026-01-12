@@ -38,8 +38,14 @@ export default function IconGenerator() {
     setAiError('');
 
     try {
-    　// Vercelに設定した環境変数を読み込む記述に変更
-　　　 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      // Vercel環境変数の読み込み (全角スペース除去済み)
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      
+      // APIキーが読み込めていない場合のチェック
+      if (!apiKey) {
+        throw new Error('APIキーが設定されていません。Vercelの環境変数を確認してください。');
+      }
+
       const fullPrompt = `Icon of ${prompt}, ${selectedStyle.promptSuffix}, high quality, no text, no watermark`;
       
       const response = await fetch(
@@ -53,14 +59,15 @@ export default function IconGenerator() {
             instances: [{ prompt: fullPrompt }],
             parameters: { 
               sampleCount: 1
-              // Removed aspectRatio as it might cause errors with the current model version
             }
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error('画像の生成に失敗しました。時間をおいて再度お試しください。');
+        const errorData = await response.json().catch(() => ({}));
+        console.error("API Error:", errorData); // デバッグ用
+        throw new Error(`生成に失敗しました (${response.status})。APIキーまたはクォータを確認してください。`);
       }
 
       const result = await response.json();
