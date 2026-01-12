@@ -38,7 +38,8 @@ export default function IconGenerator() {
     setAiError('');
 
     try {
-      const apiKey = ""; // Runtime key injection
+    　// Vercelに設定した環境変数を読み込む記述に変更
+　　　 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       const fullPrompt = `Icon of ${prompt}, ${selectedStyle.promptSuffix}, high quality, no text, no watermark`;
       
       const response = await fetch(
