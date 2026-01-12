@@ -4,7 +4,7 @@ import { Download, Sparkles, Wand2, Loader2, Image as ImageIcon, History, Trash2
 /**
  * SNS Icon Generator (Final App Version)
  * Features:
- * 1. AI Icon Generator (via Gemini 1.5 Flash - SVG Generation)
+ * 1. AI Icon Generator (via Gemini Pro - SVG Generation)
  * 2. History Management
  * 3. Enhanced UI/UX
  */
@@ -46,7 +46,7 @@ export default function IconGenerator() {
         throw new Error('APIキーが設定されていません。Vercelの環境変数を確認してください。');
       }
 
-      // Gemini 1.5 Flash を使用してSVGを生成するプロンプト
+      // Gemini Pro を使用してSVGを生成するプロンプト
       const systemPrompt = `
         You are an expert SVG icon designer. 
         Please generate an SVG code for an icon based on the user's request.
@@ -61,9 +61,9 @@ export default function IconGenerator() {
 
       const userPrompt = `Icon description: ${prompt}`;
       
-      // Gemini 1.5 Flash API endpoint
+      // Gemini Pro API endpoint (より安定したモデルに変更)
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
