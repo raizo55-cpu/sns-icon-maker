@@ -4,7 +4,7 @@ import { Download, Sparkles, Wand2, Loader2, Image as ImageIcon, History, Trash2
 /**
  * SNS Icon Generator (Final App Version)
  * Features:
- * 1. AI Image Generator (via Imagen API)
+ * 1. AI Image Generator (via Imagen 3.0 API)
  * 2. History Management
  * 3. Enhanced UI/UX
  */
@@ -49,6 +49,7 @@ export default function IconGenerator() {
       const fullPrompt = `Icon of ${prompt}, ${selectedStyle.promptSuffix}, high quality, no text, no watermark`;
       
       // Imagen 3.0 モデルを使用 (画像生成)
+      // 注意: 新しいAPIキーでも、アカウントによってはImagenがまだ有効化されていない場合があります
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${apiKey}`,
         {
@@ -69,7 +70,9 @@ export default function IconGenerator() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("API Error:", errorData);
-        throw new Error(`生成に失敗しました (${response.status})。APIキーを確認してください。`);
+        // エラー詳細を表示するように変更
+        const errorMessage = errorData.error?.message || `生成に失敗しました (${response.status})。APIキーの権限を確認してください。`;
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
